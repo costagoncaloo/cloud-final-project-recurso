@@ -27,3 +27,13 @@ terraform.tfvars
 
 # Logs
 *.log
+
+# Local/private deployment files
+ansible/inventory.ini
+infra/envs/dev/terraform.tfvars
+*.tfvars
+!*.tfvars.example
+*.pem
+.terraform/
+*.tfstate
+*.tfstate.*
