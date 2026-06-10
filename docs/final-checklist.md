@@ -32,6 +32,7 @@ Screenshots have been collected under `docs/evidence/screenshots/` for:
 - S3 bucket used for Terraform remote state.
 - DynamoDB table used for Terraform locking.
 - GitHub Actions CI successful run.
+- Terraform validation and outputs.
 - API health checks for ports `8081`, `8082`, and `8083`.
 - Product creation response.
 - Order creation response.

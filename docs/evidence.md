@@ -38,6 +38,7 @@ The screenshots collected for the delivery are stored in
 | [`12-dynamodb-lock-table-details.png`](evidence/screenshots/12-dynamodb-lock-table-details.png) | Terraform lock table details. |
 | [`13-github-actions-ci-success.png`](evidence/screenshots/13-github-actions-ci-success.png) | GitHub Actions CI workflow successful. |
 | [`14-github-actions-ci-jobs.png`](evidence/screenshots/14-github-actions-ci-jobs.png) | GitHub Actions CI jobs completed successfully. |
+| [`15-terminal-api-validation.png`](evidence/screenshots/15-terminal-api-validation.png) | Terminal evidence showing `terraform validate` success and Terraform outputs. |
 | [`00-project-guidance-notes.png`](evidence/screenshots/00-project-guidance-notes.png) | Auxiliary project notes, not primary AWS evidence. |
 
 ## Terraform
