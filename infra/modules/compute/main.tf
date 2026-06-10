@@ -49,11 +49,17 @@ resource "aws_iam_instance_profile" "app" {
 
 resource "aws_instance" "app" {
   ami                    = data.aws_ami.amazon_linux.id
-  instance_type          = "t3.micro"
+  instance_type          = "t3.small"
   subnet_id              = var.public_subnet_id
   vpc_security_group_ids = [var.app_security_group_id]
   key_name               = var.ec2_key_name
   iam_instance_profile   = aws_iam_instance_profile.app.name
+  root_block_device {
+    volume_size           = 30
+    volume_type           = "gp3"
+    delete_on_termination = true
+    encrypted             = true
+  }
 
   user_data = templatefile("${path.module}/templates/app.env.tftpl", {
     image_registry    = var.image_registry
