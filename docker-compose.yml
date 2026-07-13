@@ -31,37 +31,6 @@ services:
       timeout: 5s
       retries: 5
 
-  localstack:
-    image: localstack/localstack:3
-    environment:
-      SERVICES: sqs
-      DEFAULT_REGION: eu-west-1
-    ports:
-      - "4566:4566"
-    volumes:
-      - localstack-data:/var/lib/localstack
-    healthcheck:
-      test: ["CMD", "awslocal", "sqs", "list-queues"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  sqs-init:
-    image: localstack/localstack:3
-    environment:
-      AWS_ACCESS_KEY_ID: localstack
-      AWS_SECRET_ACCESS_KEY: localstack
-      AWS_DEFAULT_REGION: eu-west-1
-    entrypoint: ["sh", "-c"]
-    command:
-      - |
-        awslocal --endpoint-url=http://localstack:4566 sqs create-queue --queue-name order-created-dlq
-        DLQ_ARN=$$(awslocal --endpoint-url=http://localstack:4566 sqs get-queue-attributes --queue-url http://localstack:4566/000000000000/order-created-dlq --attribute-names QueueArn --query 'Attributes.QueueArn' --output text)
-        awslocal --endpoint-url=http://localstack:4566 sqs create-queue --queue-name order-created-queue --attributes "{\"RedrivePolicy\":\"{\\\"deadLetterTargetArn\\\":\\\"$$DLQ_ARN\\\",\\\"maxReceiveCount\\\":\\\"3\\\"}\"}"
-    depends_on:
-      localstack:
-        condition: service_healthy
-
   catalog-service:
     build: ./services/catalog-service
     environment:
@@ -80,37 +49,19 @@ services:
       DATABASE_URL: jdbc:postgresql://order-db:5432/order_db
       DATABASE_USERNAME: order_user
       DATABASE_PASSWORD: order_password
-      CATALOG_SERVICE_URL: http://catalog-service:8081
-      AWS_REGION: eu-west-1
-      SQS_ENDPOINT: http://localstack:4566
-      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-created-queue
     ports:
       - "8082:8082"
     depends_on:
       order-db:
         condition: service_healthy
-      localstack:
-        condition: service_healthy
-      sqs-init:
-        condition: service_completed_successfully
       catalog-service:
         condition: service_started
 
   notification-service:
     build: ./services/notification-service
-    environment:
-      AWS_REGION: eu-west-1
-      SQS_ENDPOINT: http://localstack:4566
-      SQS_QUEUE_URL: http://localstack:4566/000000000000/order-created-queue
     ports:
       - "8083:8083"
-    depends_on:
-      localstack:
-        condition: service_healthy
-      sqs-init:
-        condition: service_completed_successfully
 
 volumes:
   catalog-db-data:
   order-db-data:
-  localstack-data:

@@ -3,7 +3,7 @@ data "aws_availability_zones" "available" {
 }
 
 resource "aws_vpc" "this" {
-  cidr_block           = "10.20.0.0/16"
+  cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -14,7 +14,6 @@ resource "aws_vpc" "this" {
 
 resource "aws_internet_gateway" "this" {
   vpc_id = aws_vpc.this.id
-
   tags = {
     Name = "${var.name_prefix}-igw"
   }
@@ -30,6 +29,7 @@ resource "aws_subnet" "public" {
 
   tags = {
     Name = "${var.name_prefix}-public-${count.index + 1}"
+    Tier = "public"
   }
 }
 
@@ -42,6 +42,7 @@ resource "aws_subnet" "private" {
 
   tags = {
     Name = "${var.name_prefix}-private-${count.index + 1}"
+    Tier = "private"
   }
 }
 
@@ -64,3 +65,40 @@ resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
+
+resource "aws_route_table" "private" {
+
+  vpc_id = aws_vpc.this.id
+
+  tags = {
+    Name = "${var.name_prefix}-private-rt"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(aws_subnet.private)
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

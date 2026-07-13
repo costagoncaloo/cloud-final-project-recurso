@@ -10,10 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
         "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-        "spring.jpa.open-in-view=false",
-        "aws.region=eu-west-1",
-        "sqs.endpoint=http://localhost:4566",
-        "sqs.queue.url=http://localhost:4566/000000000000/order-created-queue"
+        "spring.jpa.open-in-view=false"
 })
 class OrderServiceApplicationTests {
 

@@ -1,30 +1,36 @@
 resource "aws_db_subnet_group" "this" {
   name       = "${var.name_prefix}-db-subnets"
   subnet_ids = var.private_subnet_ids
+
+  tags = {
+    Name = "${var.name_prefix}-db-subnets"
+  }
 }
 
 resource "aws_security_group" "db" {
   name        = "${var.name_prefix}-db-sg"
-  description = "Allow PostgreSQL from the app host"
-  vpc_id      = data.aws_subnet.first_private.vpc_id
+  description = "Allow PostgresSQL from the application security group"
+  vpc_id      = var.vpc_id
 
   ingress {
+    description     = "PostgresSQL from app host"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [var.app_security_group]
+    security_groups = [var.app_security_group_id]
   }
 
   egress {
+    description = "Allow outbound traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-}
 
-data "aws_subnet" "first_private" {
-  id = var.private_subnet_ids[0]
+  tags = {
+    Name = "${var.name_prefix}-db-sg"
+  }
 }
 
 resource "aws_db_instance" "this" {
@@ -40,4 +46,5 @@ resource "aws_db_instance" "this" {
   vpc_security_group_ids = [aws_security_group.db.id]
   publicly_accessible    = false
   skip_final_snapshot    = true
+  deletion_protection    = false
 }

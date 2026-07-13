@@ -2,42 +2,29 @@ variable "aws_region" {
   type    = string
   default = "eu-west-1"
 }
-
 variable "project" {
   type    = string
-  default = "cloud-ecommerce"
+  default = "cloud-recurso"
 }
-
 variable "environment" {
   type    = string
   default = "dev"
 }
-
 variable "owner" {
   type    = string
-  default = "team"
+  default = "goncalo"
 }
-
 variable "common_tags" {
   type = map(string)
   default = {
-    Project     = "cloud-ecommerce"
+    Project     = "cloud-recurso"
     Environment = "dev"
-    Owner       = "team"
+    Owner       = "goncalo"
     ManagedBy   = "terraform"
   }
 }
 
-variable "ec2_key_name" {
-  type        = string
-  description = "Existing EC2 key pair name used by Ansible over SSH."
-}
-
-variable "allowed_ssh_cidr" {
-  type        = string
-  description = "CIDR allowed to SSH into the app EC2. Use your current public IP with /32."
-}
-
+//modulo DB
 variable "db_username" {
   type      = string
   default   = "app_user"
@@ -49,7 +36,9 @@ variable "db_password" {
   sensitive = true
 }
 
-variable "image_registry" {
+//Security group
+
+variable "allowed_ssh_cidr" {
   type        = string
-  description = "Container registry namespace, for example ghcr.io/owner/cloud-ecommerce-project."
+  description = "CIDR allowed to SSH into the EC2 app host. Use your public Ip with /32."
 }
