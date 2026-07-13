@@ -60,3 +60,18 @@ module "db" {
   database_password     = var.db_password
 }
 
+//Modulo ECR
+
+module "ecr" {
+    source = "../../modules/ecr"
+
+    name_prefix = local.name_prefix
+
+    service_names = [
+        "catalog-service",
+        "order-service",
+        "notification-service"
+        ]
+    }
+
+
