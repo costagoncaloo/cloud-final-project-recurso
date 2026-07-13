@@ -42,3 +42,17 @@ variable "allowed_ssh_cidr" {
   type        = string
   description = "CIDR allowed to SSH into the EC2 app host. Use your public Ip with /32."
 }
+
+//Modulo EC2
+
+variable "ssh_public_key_path" {
+    type = string
+    description = "Path to the SSH public key used for EC2 access"
+    }
+
+variable "app_instance_type" {
+    type = string
+    default = "t3.small"
+    }
+
+

@@ -74,4 +74,18 @@ module "ecr" {
         ]
     }
 
+//modulo EC2
+
+module "compute" {
+    source = "../../modules/compute"
+
+    name_prefix = local.name_prefix
+    public_subnet_id = module.vpc.public_subnet_ids[0]
+    app_security_group_id = aws_security_group.app.id
+    ssh_public_key_path = var.ssh_public_key_path
+    instance_type = var.app_instance_type
+    }
+
+
+
 
