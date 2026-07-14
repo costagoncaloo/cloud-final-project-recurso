@@ -27,12 +27,12 @@ output "database_name" {
 
 //ECR
 output "ecr_repository_urls" {
-    value = module.ecr.repository_urls
-    }
+  value = module.ecr.repository_urls
+}
 
 output "ecr_repository_names" {
-    value = module.ecr.repository_names
-    }
+  value = module.ecr.repository_names
+}
 
 //EC2
 
@@ -52,5 +52,17 @@ output "app_ssh_command" {
   value = "ssh -i ~/.ssh/cloud-recurso/cloud-recurso-dev ec2-user@${module.compute.public_ip}"
 }
 
+//SQS
+output "order_events_queue_url" {
+  value = module.queue.order_events_queue_url
+}
+
+output "order_events_queue_name" {
+  value = module.queue.order_events_queue_name
+}
+
+output "dead_letter_queue_url" {
+  value = module.queue.dead_letter_queue_url
+}
 
 

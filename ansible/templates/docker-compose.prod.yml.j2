@@ -18,6 +18,8 @@ services:
       DATABASE_URL: "jdbc:postgresql://{{ database_endpoint }}:5432/{{ database_name }}"
       DATABASE_USERNAME: "{{ database_username }}"
       DATABASE_PASSWORD: "{{ database_password }}"
+      AWS_REGION: "{{ aws_region }}"
+      ORDER_EVENTS_QUEUE_URL: "{{ order_events_queue_url }}"
     ports:
       - "8082:8082"
 
@@ -26,5 +28,7 @@ services:
     restart: unless-stopped
     environment:
       SERVER_PORT: "8083"
+      AWS_REGION: "{{ aws_region }}"
+      ORDER_EVENTS_QUEUE_URL: "{{ order_events_queue_url }}"
     ports:
       - "8083:8083"

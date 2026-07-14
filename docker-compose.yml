@@ -49,6 +49,8 @@ services:
       DATABASE_URL: jdbc:postgresql://order-db:5432/order_db
       DATABASE_USERNAME: order_user
       DATABASE_PASSWORD: order_password
+      AWS_REGION: eu-west-1
+      ORDER_EVENTS_QUEUE_URL: ""
     ports:
       - "8082:8082"
     depends_on:
@@ -59,6 +61,9 @@ services:
 
   notification-service:
     build: ./services/notification-service
+    environment:
+      AWS_REGION: eu-west-1
+      ORDER_EVENTS_QUEUE_URL: ""
     ports:
       - "8083:8083"
 

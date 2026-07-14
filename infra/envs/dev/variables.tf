@@ -46,13 +46,12 @@ variable "allowed_ssh_cidr" {
 //Modulo EC2
 
 variable "ssh_public_key_path" {
-    type = string
-    description = "Path to the SSH public key used for EC2 access"
-    }
+  type        = string
+  description = "Path to the SSH public key used for EC2 access"
+}
 
 variable "app_instance_type" {
-    type = string
-    default = "t3.small"
-    }
-
+  type    = string
+  default = "t3.small"
+}
 

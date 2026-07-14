@@ -1,5 +1,6 @@
 package com.cloudproject.order_service.service;
 
+import com.cloudproject.order_service.dto.OrderCreatedEvent;
 import com.cloudproject.order_service.dto.OrderRequest;
 import com.cloudproject.order_service.dto.OrderResponse;
 import com.cloudproject.order_service.exception.OrderNotFoundException;
@@ -15,9 +16,11 @@ import java.util.List;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderEventPublisher orderEventPublisher;
 
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher) {
         this.orderRepository = orderRepository;
+        this.orderEventPublisher = orderEventPublisher;
     }
 
     public List<OrderResponse> getAllOrders() {
@@ -43,6 +46,13 @@ public class OrderService {
         );
 
         Order savedOrder = orderRepository.save(order);
+        orderEventPublisher.publishOrderCreated(new OrderCreatedEvent(
+                "ORDER_CREATED",
+                savedOrder.getId(),
+                savedOrder.getProductId(),
+                savedOrder.getQuantity(),
+                savedOrder.getCreatedAt()
+        ));
 
         return mapToResponse(savedOrder);
     }
