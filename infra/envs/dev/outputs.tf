@@ -65,4 +65,8 @@ output "dead_letter_queue_url" {
   value = module.queue.dead_letter_queue_url
 }
 
+// GitHub actions CD
 
+output "github_actions_role_arn" {
+  value = module.github_actions.role_arn
+}

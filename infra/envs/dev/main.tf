@@ -95,4 +95,15 @@ module "queue" {
   name_prefix = local.name_prefix
 }
 
+// GitHub actions CD
 
+module "github_actions" {
+  source = "../../modules/github-actions"
+
+  name_prefix            = local.name_prefix
+  github_repository      = var.github_repository
+  ecr_repository_arns    = values(module.ecr.repository_arns)
+  terraform_state_bucket = "cloud-recurso-tf-state-806758135628-euw1-v2"
+  terraform_state_key    = "envs/dev/terraform.tfstate"
+  terraform_lock_table   = "cloud-recurso-tf-locks"
+}

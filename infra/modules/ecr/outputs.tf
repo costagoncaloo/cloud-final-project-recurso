@@ -11,3 +11,11 @@ output "repository_names" {
     service_name => repository.name
   }
 }
+
+
+output "repository_arns" {
+  value = {
+    for service_name, repository in aws_ecr_repository.this :
+    service_name => repository.arn
+  }
+}

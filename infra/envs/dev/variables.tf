@@ -55,3 +55,9 @@ variable "app_instance_type" {
   default = "t3.small"
 }
 
+//Github actions
+variable "github_repository" {
+  type        = string
+  description = "GitHub repository allowed to deploy, in OWNER/REPO format."
+  default     = "costagoncaloo/cloud-final-project-recurso"
+}
