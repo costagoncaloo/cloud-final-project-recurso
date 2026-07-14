@@ -52,7 +52,7 @@ variable "ssh_public_key_path" {
 
 variable "app_instance_type" {
   type    = string
-  default = "t3.micro"
+  default = "t3.small"
 }
 
 variable "database_multi_az" {

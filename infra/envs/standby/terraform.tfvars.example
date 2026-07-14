@@ -6,5 +6,5 @@ db_username         = "app_user"
 db_password         = "CHANGE_ME_LONG_PASSWORD"
 allowed_ssh_cidr    = "CHANGE_ME_YOUR_PUBLIC_IP/32"
 ssh_public_key_path = "~/.ssh/cloud-recurso/cloud-recurso-dev.pub"
-app_instance_type   = "t3.micro"
+app_instance_type   = "t3.small"
 database_multi_az   = false
