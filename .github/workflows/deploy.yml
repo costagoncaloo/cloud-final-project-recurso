@@ -1,0 +1,122 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: eu-west-1
+  AWS_ACCOUNT_ID: "806758135628"
+  ECR_REGISTRY: 806758135628.dkr.ecr.eu-west-1.amazonaws.com
+  CATALOG_REPOSITORY: cloud-recurso-dev-catalog-service
+  ORDER_REPOSITORY: cloud-recurso-dev-order-service
+  NOTIFICATION_REPOSITORY: cloud-recurso-dev-notification-service
+  DB_USERNAME: app_user
+
+jobs:
+  deploy:
+    name: Build images and deploy to EC2
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::806758135628:role/cloud-recurso-dev-github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Read infrastructure outputs
+        run: |
+          terraform -chdir=infra/envs/dev init -input=false
+          echo "APP_HOST=$(terraform -chdir=infra/envs/dev output -raw app_public_ip)" >> "$GITHUB_ENV"
+          echo "DATABASE_ENDPOINT=$(terraform -chdir=infra/envs/dev output -raw database_endpoint)" >> "$GITHUB_ENV"
+          echo "DATABASE_NAME=$(terraform -chdir=infra/envs/dev output -raw database_name)" >> "$GITHUB_ENV"
+          echo "ORDER_EVENTS_QUEUE_URL=$(terraform -chdir=infra/envs/dev output -raw order_events_queue_url)" >> "$GITHUB_ENV"
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push catalog-service
+        uses: docker/build-push-action@v6
+        with:
+          context: services/catalog-service
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.CATALOG_REPOSITORY }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/${{ env.CATALOG_REPOSITORY }}:latest
+
+      - name: Build and push order-service
+        uses: docker/build-push-action@v6
+        with:
+          context: services/order-service
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ORDER_REPOSITORY }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ORDER_REPOSITORY }}:latest
+
+      - name: Build and push notification-service
+        uses: docker/build-push-action@v6
+        with:
+          context: services/notification-service
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.NOTIFICATION_REPOSITORY }}:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/${{ env.NOTIFICATION_REPOSITORY }}:latest
+
+      - name: Install Ansible
+        run: |
+          python3 -m pip install --user ansible-core
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Prepare SSH inventory
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/cloud-recurso-dev
+          chmod 600 ~/.ssh/cloud-recurso-dev
+          cat > ansible/inventory.ci.ini <<EOF
+          [app]
+          ${APP_HOST} ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/cloud-recurso-dev
+          EOF
+
+      - name: Deploy with Ansible
+        run: |
+          ansible-playbook -i ansible/inventory.ci.ini ansible/deploy.yml \
+            -e "catalog_image=${ECR_REGISTRY}/${CATALOG_REPOSITORY}:latest" \
+            -e "order_image=${ECR_REGISTRY}/${ORDER_REPOSITORY}:latest" \
+            -e "notification_image=${ECR_REGISTRY}/${NOTIFICATION_REPOSITORY}:latest" \
+            -e "database_endpoint=${DATABASE_ENDPOINT}" \
+            -e "database_name=${DATABASE_NAME}" \
+            -e "database_username=${DB_USERNAME}" \
+            -e "database_password=${{ secrets.DB_PASSWORD }}" \
+            -e "order_events_queue_url=${ORDER_EVENTS_QUEUE_URL}"
+
+      - name: Validate deployed health checks
+        run: |
+          curl --fail --silent "http://${APP_HOST}:8081/actuator/health"
+          curl --fail --silent "http://${APP_HOST}:8082/actuator/health"
+          curl --fail --silent "http://${APP_HOST}:8083/actuator/health"
