@@ -114,6 +114,25 @@ data "aws_iam_policy_document" "github_actions" {
       "arn:aws:dynamodb:*:*:table/${var.terraform_lock_table}"
     ]
   }
+
+  statement {
+    sid = "DescribeSecurityGroups"
+    actions = [
+      "ec2:DescribeSecurityGroups"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid = "ManageTemporarySshAccess"
+    actions = [
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:RevokeSecurityGroupIngress"
+    ]
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${var.aws_account_id}:security-group/${var.app_security_group_id}"
+    ]
+  }
 }
 
 resource "aws_iam_policy" "github_actions" {

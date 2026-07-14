@@ -11,6 +11,18 @@ variable "ecr_repository_arns" {
   type = list(string)
 }
 
+variable "aws_region" {
+  type = string
+}
+
+variable "aws_account_id" {
+  type = string
+}
+
+variable "app_security_group_id" {
+  type = string
+}
+
 variable "terraform_state_bucket" {
   type = string
 }

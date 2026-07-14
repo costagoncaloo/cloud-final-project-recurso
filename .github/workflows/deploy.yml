@@ -48,6 +48,7 @@ jobs:
         run: |
           terraform -chdir=infra/envs/dev init -input=false
           echo "APP_HOST=$(terraform -chdir=infra/envs/dev output -raw app_public_ip)" >> "$GITHUB_ENV"
+          echo "APP_SECURITY_GROUP_ID=$(terraform -chdir=infra/envs/dev output -raw app_security_group_id)" >> "$GITHUB_ENV"
           echo "DATABASE_ENDPOINT=$(terraform -chdir=infra/envs/dev output -raw database_endpoint)" >> "$GITHUB_ENV"
           echo "DATABASE_NAME=$(terraform -chdir=infra/envs/dev output -raw database_name)" >> "$GITHUB_ENV"
           echo "ORDER_EVENTS_QUEUE_URL=$(terraform -chdir=infra/envs/dev output -raw order_events_queue_url)" >> "$GITHUB_ENV"
@@ -98,10 +99,26 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/cloud-recurso-dev
           chmod 600 ~/.ssh/cloud-recurso-dev
-          cat > ansible/inventory.ci.ini <<EOF
-          [app]
-          ${APP_HOST} ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/cloud-recurso-dev
-          EOF
+          printf '[app]\n%s ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/cloud-recurso-dev\n' "$APP_HOST" > ansible/inventory.ci.ini
+
+      - name: Allow GitHub runner SSH access
+        run: |
+          RUNNER_IP="$(curl --fail --silent https://checkip.amazonaws.com)"
+          echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
+
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$APP_SECURITY_GROUP_ID" \
+            --protocol tcp \
+            --port 22 \
+            --cidr "${RUNNER_IP}/32" \
+            2> authorize-ssh-error.log || {
+              if grep -q "InvalidPermission.Duplicate" authorize-ssh-error.log; then
+                echo "SSH access for this runner already exists."
+              else
+                cat authorize-ssh-error.log
+                exit 1
+              fi
+            }
 
       - name: Deploy with Ansible
         run: |
@@ -120,3 +137,14 @@ jobs:
           curl --fail --silent "http://${APP_HOST}:8081/actuator/health"
           curl --fail --silent "http://${APP_HOST}:8082/actuator/health"
           curl --fail --silent "http://${APP_HOST}:8083/actuator/health"
+
+      - name: Revoke GitHub runner SSH access
+        if: always()
+        run: |
+          if [ -n "${RUNNER_IP:-}" ]; then
+            aws ec2 revoke-security-group-ingress \
+              --group-id "$APP_SECURITY_GROUP_ID" \
+              --protocol tcp \
+              --port 22 \
+              --cidr "${RUNNER_IP}/32" || true
+          fi

@@ -2,6 +2,7 @@ locals {
   name_prefix = "${var.project}-${var.environment}"
 }
 
+data "aws_caller_identity" "current" {}
 
 //modulo VPC
 module "vpc" {
@@ -103,6 +104,9 @@ module "github_actions" {
   name_prefix            = local.name_prefix
   github_repository      = var.github_repository
   ecr_repository_arns    = values(module.ecr.repository_arns)
+  aws_region             = var.aws_region
+  aws_account_id         = data.aws_caller_identity.current.account_id
+  app_security_group_id  = aws_security_group.app.id
   terraform_state_bucket = "cloud-recurso-tf-state-806758135628-euw1-v2"
   terraform_state_key    = "envs/dev/terraform.tfstate"
   terraform_lock_table   = "cloud-recurso-tf-locks"
