@@ -150,9 +150,18 @@ jobs:
 
       - name: Validate deployed health checks
         run: |
-          curl --fail --silent "http://${APP_HOST}:8081/actuator/health"
-          curl --fail --silent "http://${APP_HOST}:8082/actuator/health"
-          curl --fail --silent "http://${APP_HOST}:8083/actuator/health"
+          for port in 8081 8082 8083; do
+            echo "Waiting for service on port ${port}..."
+            curl \
+              --fail \
+              --silent \
+              --show-error \
+              --retry 30 \
+              --retry-delay 5 \
+              --retry-connrefused \
+              "http://${APP_HOST}:${port}/actuator/health"
+            echo
+          done
 
       - name: Revoke GitHub runner SSH access
         if: always()
