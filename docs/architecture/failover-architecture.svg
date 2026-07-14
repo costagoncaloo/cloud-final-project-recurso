@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="980" viewBox="0 0 1500 980" role="img" aria-labelledby="title desc">
+  <title id="title">Arquitetura de failover e disaster recovery</title>
+  <desc id="desc">Diagrama de disaster recovery com primary em eu-west-1, standby em eu-west-2, GitHub Actions, SSM active endpoint e DR Drill.</desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#059669"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 34px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #475569; }
+      .label { font: 700 18px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 400 15px Arial, sans-serif; fill: #334155; }
+      .tiny { font: 400 13px Arial, sans-serif; fill: #475569; }
+      .region-primary { fill: #eff6ff; stroke: #2563eb; stroke-width: 3; rx: 20; }
+      .region-standby { fill: #ecfdf5; stroke: #059669; stroke-width: 3; rx: 20; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 14; }
+      .compute { fill: #dbeafe; stroke: #3b82f6; stroke-width: 2; rx: 12; }
+      .compute-standby { fill: #dcfce7; stroke: #22c55e; stroke-width: 2; rx: 12; }
+      .data { fill: #fff7ed; stroke: #f59e0b; stroke-width: 2; rx: 12; }
+      .ssm { fill: #f5f3ff; stroke: #8b5cf6; stroke-width: 2.5; rx: 14; }
+      .danger { fill: #fee2e2; stroke: #ef4444; stroke-width: 2; rx: 12; }
+      .note { fill: #fefce8; stroke: #eab308; stroke-width: 2; rx: 12; }
+      .line-blue { stroke: #2563eb; stroke-width: 3; fill: none; marker-end: url(#arrow-blue); }
+      .line-red { stroke: #dc2626; stroke-width: 3; fill: none; marker-end: url(#arrow-red); }
+      .line-green { stroke: #059669; stroke-width: 3; fill: none; marker-end: url(#arrow-green); }
+      .dash { stroke-dasharray: 8 8; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1500" height="980"/>
+  <text class="title" x="70" y="62">Arquitetura de failover</text>
+  <text class="subtitle" x="70" y="94">Ambiente primary em eu-west-1 e ambiente standby em eu-west-2, preparados por Terraform e validados por GitHub Actions.</text>
+
+  <rect class="box" x="70" y="135" width="1360" height="135"/>
+  <text class="label" x="105" y="175">GitHub Actions</text>
+  <text class="small" x="105" y="204">DR Infrastructure cria/valida infraestrutura nas duas regioes.</text>
+  <text class="small" x="105" y="230">CD e CD Standby fazem deploy das mesmas imagens Docker nos dois ambientes.</text>
+  <text class="small" x="105" y="256">DR Drill simula falha no primary, promove standby, mede RTO e faz rollback.</text>
+
+  <rect class="region-primary" x="70" y="330" width="610" height="455"/>
+  <text class="label" x="105" y="370">Primary - eu-west-1</text>
+  <text class="small" x="105" y="397">Ambiente normal usado pela aplicacao.</text>
+
+  <rect class="compute" x="115" y="430" width="245" height="145"/>
+  <text class="label" x="145" y="468">EC2 primary</text>
+  <text class="small" x="145" y="496">Docker Compose</text>
+  <text class="small" x="145" y="522">catalog/order/notification</text>
+  <text class="small" x="145" y="548">Health checks 8081-8083</text>
+
+  <rect class="data" x="395" y="430" width="235" height="145"/>
+  <text class="label" x="425" y="468">RDS primary</text>
+  <text class="small" x="425" y="496">PostgreSQL</text>
+  <text class="small" x="425" y="522">subnets privadas</text>
+  <text class="small" x="425" y="548">dados da aplicacao</text>
+
+  <rect class="data" x="115" y="625" width="245" height="105"/>
+  <text class="label" x="145" y="663">SQS + DLQ</text>
+  <text class="small" x="145" y="692">eventos de encomendas</text>
+
+  <rect class="ssm" x="395" y="625" width="235" height="105"/>
+  <text class="label" x="425" y="663">SSM primary</text>
+  <text class="small" x="425" y="692">password DB e endpoint ativo</text>
+
+  <rect class="region-standby" x="820" y="330" width="610" height="455"/>
+  <text class="label" x="855" y="370">Standby - eu-west-2</text>
+  <text class="small" x="855" y="397">Ambiente preparado para ser promovido.</text>
+
+  <rect class="compute-standby" x="865" y="430" width="245" height="145"/>
+  <text class="label" x="895" y="468">EC2 standby</text>
+  <text class="small" x="895" y="496">mesmas imagens Docker</text>
+  <text class="small" x="895" y="522">deploy por CD Standby</text>
+  <text class="small" x="895" y="548">Health checks 8081-8083</text>
+
+  <rect class="data" x="1145" y="430" width="235" height="145"/>
+  <text class="label" x="1175" y="468">RDS standby</text>
+  <text class="small" x="1175" y="496">PostgreSQL</text>
+  <text class="small" x="1175" y="522">subnets privadas</text>
+  <text class="small" x="1175" y="548">restauro por snapshot</text>
+
+  <rect class="data" x="865" y="625" width="245" height="105"/>
+  <text class="label" x="895" y="663">SQS + DLQ</text>
+  <text class="small" x="895" y="692">fila equivalente no standby</text>
+
+  <rect class="ssm" x="1145" y="625" width="235" height="105"/>
+  <text class="label" x="1175" y="663">SSM standby</text>
+  <text class="small" x="1175" y="692">password DB do standby</text>
+
+  <rect class="ssm" x="485" y="830" width="530" height="95"/>
+  <text class="label" x="530" y="868">Parametro de controlo do failover</text>
+  <text class="small" x="530" y="896">/cloud-recurso/dr/active-app-endpoint aponta para primary ou standby</text>
+
+  <path class="line-blue" d="M750 270 C520 300, 300 340, 240 430"/>
+  <text class="tiny" x="350" y="322">CD primary</text>
+  <path class="line-green" d="M790 270 C1000 300, 1110 340, 995 430"/>
+  <text class="tiny" x="1000" y="322">CD Standby</text>
+
+  <path class="line-red dash" d="M238 575 C250 805, 525 805, 610 830"/>
+  <text class="tiny" x="262" y="803">falha simulada: parar containers primary</text>
+
+  <path class="line-green" d="M1015 830 C1030 765, 1005 650, 990 575"/>
+  <text class="tiny" x="1032" y="800">promocao do standby</text>
+
+  <path class="line-blue" d="M630 675 L865 675"/>
+  <text class="tiny" x="685" y="662">mesma ideia de fila</text>
+
+  <path class="line-blue dash" d="M630 502 L1145 502"/>
+  <text class="tiny" x="735" y="488">estrategia de dados: snapshot/restore documentado</text>
+
+  <rect class="danger" x="70" y="835" width="320" height="90"/>
+  <text class="label" x="105" y="870">RTO</text>
+  <text class="small" x="105" y="900">Medido pelo workflow DR Drill</text>
+
+  <rect class="note" x="1095" y="835" width="335" height="90"/>
+  <text class="label" x="1130" y="870">Escolha cost-aware</text>
+  <text class="small" x="1130" y="900">Sem Route 53 nem replica cross-region</text>
+
+  <text class="tiny" x="92" y="950">Resumo: em falha, o primary e parado, o standby e validado, o endpoint ativo muda para eu-west-2 e depois o rollback repoe o primary.</text>
+</svg>

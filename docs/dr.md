@@ -19,30 +19,9 @@ O ambiente primary e o ambiente normal da aplicacao. O ambiente standby fica pre
 
 ## 2. Arquitetura DR
 
-```text
-                         GitHub Actions
-                              |
-                              |
-             +----------------+----------------+
-             |                                 |
-             v                                 v
-    +------------------+              +------------------+
-    | Primary          |              | Standby          |
-    | eu-west-1        |              | eu-west-2        |
-    |                  |              |                  |
-    | VPC              |              | VPC              |
-    | EC2 + Docker     |              | EC2 + Docker     |
-    | RDS primary      |              | RDS standby      |
-    | SQS + DLQ        |              | SQS + DLQ        |
-    | SSM Parameters   |              | SSM Parameters   |
-    +------------------+              +------------------+
-             |                                 |
-             +---------------+-----------------+
-                             |
-                             v
-                 SSM active app endpoint
-                 /cloud-recurso/dr/active-app-endpoint
-```
+![Arquitetura de failover](architecture/failover-architecture.svg)
+
+O desenho mostra os dois ambientes separados por regiao. O primary em `eu-west-1` e o ambiente usado normalmente. O standby em `eu-west-2` recebe as mesmas imagens Docker e fica pronto para ser promovido durante o drill. O parametro SSM `/cloud-recurso/dr/active-app-endpoint` representa qual e o endpoint ativo em cada momento.
 
 ## 3. RTO e RPO
 
@@ -302,3 +281,13 @@ Explicacao curta:
 ```text
 Para o recurso implementei uma estrategia de disaster recovery com primary em eu-west-1 e standby em eu-west-2. A infraestrutura dos dois ambientes e criada por Terraform, o deploy e feito por GitHub Actions e Ansible, e o failover drill e automatizado. O workflow DR Drill simula uma falha no primary, promove o standby, mede o RTO e faz rollback sem usar a consola da AWS. Para dados, documentei a estrategia de snapshot/restore porque a conta Free Tier bloqueou backup retention automatico no RDS.
 ```
+
+## 13. Evidencias guardadas
+
+Os prints usados para comprovar a configuracao e os testes ficaram guardados em:
+
+```text
+docs/screenshots/
+```
+
+Estes prints mostram os pontos principais da entrega: ambientes nas regioes `eu-west-1` e `eu-west-2`, instancias EC2 primary e standby, workflows do GitHub Actions, health checks e execucao dos testes de DR.

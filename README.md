@@ -93,38 +93,9 @@ Usado para CI e CD. O CI corre testes. O CD cria as imagens, envia para o ECR e 
 
 ## 4. Desenho geral da arquitetura
 
-```mermaid
-flowchart TB
-    DEV["Developer"] --> GH["GitHub Repository"]
+![Arquitetura geral do projeto](docs/architecture/project-architecture.svg)
 
-    GH --> CI["CI - GitHub Actions<br/>Testes Maven"]
-    CI --> CD["CD - GitHub Actions<br/>Build, push e deploy"]
-
-    CD -->|OIDC assume role| IAM["IAM Role<br/>GitHub Actions"]
-    CD -->|docker push| ECR["Amazon ECR<br/>Imagens Docker"]
-    CD -->|SSH temporario + Ansible| EC2["EC2 App Host<br/>Docker Compose"]
-
-    ECR -->|docker pull| EC2
-
-    subgraph AWS["AWS - eu-west-1"]
-        subgraph VPC["VPC cloud-recurso-dev"]
-            subgraph PUB["Subnets publicas"]
-                EC2
-            end
-
-            subgraph PRIV["Subnets privadas"]
-                RDS["RDS PostgreSQL<br/>database ecommerce"]
-            end
-        end
-
-        SQS["SQS<br/>order-events"]
-        DLQ["DLQ<br/>order-events-dlq"]
-    end
-
-    EC2 -->|JDBC 5432| RDS
-    EC2 -->|send/receive messages| SQS
-    SQS -->|falhas repetidas| DLQ
-```
+Neste desenho da para ver a ideia principal: o GitHub Actions testa o codigo, cria as imagens Docker, guarda-as no ECR e depois usa Ansible para fazer deploy na EC2. A EC2 fica numa subnet publica porque precisa de expor a aplicacao e receber o deploy. A base de dados fica em subnets privadas e so aceita ligacao da EC2. A comunicacao assincrona entre encomendas e notificacoes passa pelo SQS.
 
 ## 5. Desenho da VPC e subnets
 
@@ -409,21 +380,9 @@ A estrategia usada foi warm standby:
 - workflow manual para failover drill;
 - medicao de RTO durante o drill.
 
-```text
-Primary eu-west-1                 Standby eu-west-2
-+------------------+              +------------------+
-| VPC              |              | VPC              |
-| EC2 + Docker     |              | EC2 + Docker     |
-| RDS primary      |              | RDS standby      |
-| SQS + DLQ        |              | SQS + DLQ        |
-| SSM Parameters   |              | SSM Parameters   |
-+------------------+              +------------------+
-          |                                  |
-          +---------------+------------------+
-                          |
-                          v
-          SSM active endpoint para indicar o ambiente ativo
-```
+![Arquitetura de failover](docs/architecture/failover-architecture.svg)
+
+O desenho de failover mostra os dois ambientes separados por regiao. O primary em `eu-west-1` e o ambiente normal. O standby em `eu-west-2` recebe as mesmas imagens Docker e fica preparado para ser promovido durante o drill. O parametro SSM `/cloud-recurso/dr/active-app-endpoint` e usado para indicar qual e o ambiente ativo.
 
 Workflows relacionados com DR:
 
