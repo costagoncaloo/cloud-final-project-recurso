@@ -405,7 +405,7 @@ A estrategia usada foi warm standby:
 - infraestrutura dos dois ambientes em Terraform;
 - deploy automatizado com GitHub Actions e Ansible;
 - secrets em SSM Parameter Store;
-- RDS Multi-AZ no primary;
+- estrategia de dados por snapshot/restore devido a restricoes Free Tier;
 - workflow manual para failover drill;
 - medicao de RTO durante o drill.
 
@@ -414,7 +414,7 @@ Primary eu-west-1                 Standby eu-west-2
 +------------------+              +------------------+
 | VPC              |              | VPC              |
 | EC2 + Docker     |              | EC2 + Docker     |
-| RDS Multi-AZ     |              | RDS standby      |
+| RDS primary      |              | RDS standby      |
 | SQS + DLQ        |              | SQS + DLQ        |
 | SSM Parameters   |              | SSM Parameters   |
 +------------------+              +------------------+

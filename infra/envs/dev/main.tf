@@ -91,8 +91,8 @@ module "db" {
   database_name           = "ecommerce"
   database_username       = var.db_username
   database_password       = var.db_password
-  multi_az                = true
-  backup_retention_period = 7
+  multi_az                = false
+  backup_retention_period = 0
 }
 
 //Modulo ECR

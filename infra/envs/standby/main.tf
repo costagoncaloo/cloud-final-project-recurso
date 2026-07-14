@@ -80,7 +80,7 @@ module "db" {
   database_password       = var.db_password
   multi_az                = var.database_multi_az
   storage_encrypted       = true
-  backup_retention_period = 7
+  backup_retention_period = 0
 }
 
 module "compute" {

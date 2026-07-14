@@ -105,6 +105,7 @@ jobs:
             -e "database_endpoint=${DATABASE_ENDPOINT}" \
             -e "database_name=${DATABASE_NAME}" \
             -e "database_username=${DB_USERNAME}" \
+            -e "database_password=${{ secrets.DB_PASSWORD }}" \
             -e "database_password_parameter_name=${DATABASE_PASSWORD_PARAMETER_NAME}" \
             -e "order_events_queue_url=${ORDER_EVENTS_QUEUE_URL}" \
             -e "aws_region=${STANDBY_AWS_REGION}" \

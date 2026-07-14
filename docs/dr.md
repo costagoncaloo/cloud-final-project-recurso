@@ -32,7 +32,7 @@ O ambiente primary e o ambiente normal da aplicacao. O ambiente standby fica pre
     |                  |              |                  |
     | VPC              |              | VPC              |
     | EC2 + Docker     |              | EC2 + Docker     |
-    | RDS Multi-AZ     |              | RDS standby      |
+    | RDS primary      |              | RDS standby      |
     | SQS + DLQ        |              | SQS + DLQ        |
     | SSM Parameters   |              | SSM Parameters   |
     +------------------+              +------------------+
@@ -50,13 +50,11 @@ Target RTO: 5 minutos.
 
 O RTO e o tempo esperado para promover o standby depois de detetar falha no primary. No drill, este valor e medido automaticamente pelo workflow `DR Drill`.
 
-Target RPO para falha de Availability Zone: perto de 0.
+Target RPO: depende do ultimo snapshot/backup disponivel.
 
-Isto e garantido pelo RDS Multi-AZ no primary. O RDS mantem uma instancia standby noutra Availability Zone dentro da mesma regiao.
+Inicialmente a solucao foi pensada para RDS Multi-AZ e backups automaticos. No entanto, a conta AWS usada no recurso tem restricoes Free Tier que bloquearam backup retention no RDS. Para manter a solucao reprodutivel nesta conta, a estrategia ficou cost-aware: standby preparado noutra regiao, failover drill automatizado e estrategia de snapshot/restore documentada.
 
-Target RPO para falha total de regiao: depende do ultimo backup/snapshot disponivel.
-
-Neste projeto, a solucao e cost-aware. O standby existe noutra regiao para aplicacao e infraestrutura, mas a estrategia principal de dados usa RDS Multi-AZ e backups automatizados. Numa versao mais avancada, a proxima melhoria seria trocar isto por uma read replica cross-region ou por restore automatico de snapshot para o RDS standby.
+Numa conta sem esta limitacao, a melhoria direta seria ativar RDS Multi-AZ ou uma read replica cross-region.
 
 ## 4. Infraestrutura
 
@@ -287,19 +285,20 @@ Vantagens:
 - tem standby preparado;
 - mede RTO num drill real;
 - usa SSM Parameter Store para secrets;
-- ativa RDS Multi-AZ no primary.
+- mantem uma estrategia de dados explicita atraves de snapshot/restore;
 
 Limitacoes:
 
 - nao usa Route 53 DNS failover porque isso exigiria dominio configurado;
 - o failover de endpoint e representado por um parametro SSM;
 - a resiliencia de dados cross-region nao e tao forte como uma read replica cross-region;
-- numa versao de producao, o ideal seria usar Route 53 health checks e RDS cross-region read replica.
+- a conta Free Tier bloqueou backup retention automatico no RDS;
+- numa versao de producao, o ideal seria usar Route 53 health checks, RDS Multi-AZ e RDS cross-region read replica.
 
 ## 12. O que dizer na defesa
 
 Explicacao curta:
 
 ```text
-Para o recurso implementei uma estrategia de disaster recovery com primary em eu-west-1 e standby em eu-west-2. A infraestrutura dos dois ambientes e criada por Terraform, o deploy e feito por GitHub Actions e Ansible, e o failover drill e automatizado. O workflow DR Drill simula uma falha no primary, promove o standby, mede o RTO e faz rollback sem usar a consola da AWS. Para dados, o primary usa RDS Multi-AZ e backups, com RPO baixo para falhas de Availability Zone.
+Para o recurso implementei uma estrategia de disaster recovery com primary em eu-west-1 e standby em eu-west-2. A infraestrutura dos dois ambientes e criada por Terraform, o deploy e feito por GitHub Actions e Ansible, e o failover drill e automatizado. O workflow DR Drill simula uma falha no primary, promove o standby, mede o RTO e faz rollback sem usar a consola da AWS. Para dados, documentei a estrategia de snapshot/restore porque a conta Free Tier bloqueou backup retention automatico no RDS.
 ```
