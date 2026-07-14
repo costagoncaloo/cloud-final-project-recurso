@@ -1,0 +1,30 @@
+services:
+  catalog-service:
+    image: "{{ catalog_image }}"
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: "8081"
+      DATABASE_URL: "jdbc:postgresql://{{ database_endpoint }}:5432/{{ database_name }}"
+      DATABASE_USERNAME: "{{ database_username }}"
+      DATABASE_PASSWORD: "{{ database_password }}"
+    ports:
+      - "8081:8081"
+
+  order-service:
+    image: "{{ order_image }}"
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: "8082"
+      DATABASE_URL: "jdbc:postgresql://{{ database_endpoint }}:5432/{{ database_name }}"
+      DATABASE_USERNAME: "{{ database_username }}"
+      DATABASE_PASSWORD: "{{ database_password }}"
+    ports:
+      - "8082:8082"
+
+  notification-service:
+    image: "{{ notification_image }}"
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: "8083"
+    ports:
+      - "8083:8083"
