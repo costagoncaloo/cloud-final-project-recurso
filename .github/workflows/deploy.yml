@@ -1,4 +1,4 @@
-name: Deploy
+name: CD
 
 on:
   workflow_run:
@@ -119,6 +119,22 @@ jobs:
                 exit 1
               fi
             }
+
+      - name: Trust EC2 SSH host key
+        run: |
+          mkdir -p ~/.ssh
+
+          for attempt in 1 2 3 4 5; do
+            if ssh-keyscan -T 10 -H "$APP_HOST" >> ~/.ssh/known_hosts; then
+              exit 0
+            fi
+
+            echo "Waiting for SSH host key..."
+            sleep 5
+          done
+
+          echo "Could not read SSH host key from ${APP_HOST}."
+          exit 1
 
       - name: Deploy with Ansible
         run: |
