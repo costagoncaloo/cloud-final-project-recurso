@@ -1,0 +1,125 @@
+name: DR Drill
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PRIMARY_REGION: eu-west-1
+  STANDBY_REGION: eu-west-2
+  ROLE_TO_ASSUME: arn:aws:iam::806758135628:role/cloud-recurso-dev-github-actions-role
+
+jobs:
+  failover-drill:
+    name: Simulate primary outage and promote standby
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.PRIMARY_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Read primary and standby outputs
+        run: |
+          terraform -chdir=infra/envs/dev init -input=false
+          terraform -chdir=infra/envs/standby init -input=false
+
+          echo "PRIMARY_INSTANCE_ID=$(terraform -chdir=infra/envs/dev output -raw app_instance_id)" >> "$GITHUB_ENV"
+          echo "PRIMARY_APP_URL=http://$(terraform -chdir=infra/envs/dev output -raw app_public_ip)" >> "$GITHUB_ENV"
+          echo "ACTIVE_ENDPOINT_PARAMETER=$(terraform -chdir=infra/envs/dev output -raw active_app_endpoint_parameter_name)" >> "$GITHUB_ENV"
+
+          echo "STANDBY_INSTANCE_ID=$(terraform -chdir=infra/envs/standby output -raw app_instance_id)" >> "$GITHUB_ENV"
+          echo "STANDBY_APP_URL=http://$(terraform -chdir=infra/envs/standby output -raw app_public_ip)" >> "$GITHUB_ENV"
+
+      - name: Check primary before drill
+        run: |
+          curl --fail --silent --show-error "${PRIMARY_APP_URL}:8081/actuator/health"
+          curl --fail --silent --show-error "${PRIMARY_APP_URL}:8082/actuator/health"
+          curl --fail --silent --show-error "${PRIMARY_APP_URL}:8083/actuator/health"
+
+      - name: Simulate primary outage
+        run: |
+          COMMAND_ID="$(aws ssm send-command \
+            --region "$PRIMARY_REGION" \
+            --instance-ids "$PRIMARY_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["cd /opt/cloud-recurso && docker compose stop"]' \
+            --query "Command.CommandId" \
+            --output text)"
+
+          aws ssm wait command-executed \
+            --region "$PRIMARY_REGION" \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$PRIMARY_INSTANCE_ID"
+
+      - name: Promote standby endpoint and measure RTO
+        run: |
+          START_TIME="$(date +%s)"
+
+          aws ssm put-parameter \
+            --region "$PRIMARY_REGION" \
+            --name "$ACTIVE_ENDPOINT_PARAMETER" \
+            --type String \
+            --value "$STANDBY_APP_URL" \
+            --overwrite
+
+          for port in 8081 8082 8083; do
+            echo "Waiting for standby service on port ${port}..."
+            curl \
+              --fail \
+              --silent \
+              --show-error \
+              --retry 30 \
+              --retry-delay 5 \
+              --retry-connrefused \
+              "${STANDBY_APP_URL}:${port}/actuator/health"
+            echo
+          done
+
+          END_TIME="$(date +%s)"
+          RTO_SECONDS="$((END_TIME - START_TIME))"
+
+          echo "Measured RTO: ${RTO_SECONDS} seconds"
+          {
+            echo "## DR Drill Result"
+            echo ""
+            echo "- Primary endpoint: ${PRIMARY_APP_URL}"
+            echo "- Standby endpoint promoted: ${STANDBY_APP_URL}"
+            echo "- Measured RTO: ${RTO_SECONDS} seconds"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Roll back primary service
+        if: always()
+        run: |
+          COMMAND_ID="$(aws ssm send-command \
+            --region "$PRIMARY_REGION" \
+            --instance-ids "$PRIMARY_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["cd /opt/cloud-recurso && docker compose up -d"]' \
+            --query "Command.CommandId" \
+            --output text)"
+
+          aws ssm wait command-executed \
+            --region "$PRIMARY_REGION" \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$PRIMARY_INSTANCE_ID"
+
+          aws ssm put-parameter \
+            --region "$PRIMARY_REGION" \
+            --name "$ACTIVE_ENDPOINT_PARAMETER" \
+            --type String \
+            --value "$PRIMARY_APP_URL" \
+            --overwrite

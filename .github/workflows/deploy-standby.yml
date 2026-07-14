@@ -1,11 +1,6 @@
-name: CD
+name: CD Standby
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
   workflow_dispatch:
 
 permissions:
@@ -13,8 +8,10 @@ permissions:
   id-token: write
 
 env:
-  AWS_REGION: eu-west-1
+  PRIMARY_AWS_REGION: eu-west-1
+  STANDBY_AWS_REGION: eu-west-2
   AWS_ACCOUNT_ID: "806758135628"
+  ROLE_TO_ASSUME: arn:aws:iam::806758135628:role/cloud-recurso-dev-github-actions-role
   ECR_REGISTRY: 806758135628.dkr.ecr.eu-west-1.amazonaws.com
   CATALOG_REPOSITORY: cloud-recurso-dev-catalog-service
   ORDER_REPOSITORY: cloud-recurso-dev-order-service
@@ -22,73 +19,34 @@ env:
   DB_USERNAME: app_user
 
 jobs:
-  deploy:
-    name: Build images and deploy to EC2
+  deploy-standby:
+    name: Deploy latest images to standby EC2
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::806758135628:role/cloud-recurso-dev-github-actions-role
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.PRIMARY_AWS_REGION }}
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
 
-      - name: Read infrastructure outputs
+      - name: Read standby infrastructure outputs
         run: |
-          terraform -chdir=infra/envs/dev init -input=false
-          echo "APP_HOST=$(terraform -chdir=infra/envs/dev output -raw app_public_ip)" >> "$GITHUB_ENV"
-          echo "APP_SECURITY_GROUP_ID=$(terraform -chdir=infra/envs/dev output -raw app_security_group_id)" >> "$GITHUB_ENV"
-          echo "DATABASE_ENDPOINT=$(terraform -chdir=infra/envs/dev output -raw database_endpoint)" >> "$GITHUB_ENV"
-          echo "DATABASE_NAME=$(terraform -chdir=infra/envs/dev output -raw database_name)" >> "$GITHUB_ENV"
-          echo "DATABASE_PASSWORD_PARAMETER_NAME=$(terraform -chdir=infra/envs/dev output -raw database_password_parameter_name)" >> "$GITHUB_ENV"
-          echo "ORDER_EVENTS_QUEUE_URL=$(terraform -chdir=infra/envs/dev output -raw order_events_queue_url)" >> "$GITHUB_ENV"
-
-      - name: Log in to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push catalog-service
-        uses: docker/build-push-action@v6
-        with:
-          context: services/catalog-service
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.CATALOG_REPOSITORY }}:${{ github.sha }}
-            ${{ env.ECR_REGISTRY }}/${{ env.CATALOG_REPOSITORY }}:latest
-
-      - name: Build and push order-service
-        uses: docker/build-push-action@v6
-        with:
-          context: services/order-service
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.ORDER_REPOSITORY }}:${{ github.sha }}
-            ${{ env.ECR_REGISTRY }}/${{ env.ORDER_REPOSITORY }}:latest
-
-      - name: Build and push notification-service
-        uses: docker/build-push-action@v6
-        with:
-          context: services/notification-service
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.NOTIFICATION_REPOSITORY }}:${{ github.sha }}
-            ${{ env.ECR_REGISTRY }}/${{ env.NOTIFICATION_REPOSITORY }}:latest
+          terraform -chdir=infra/envs/standby init -input=false
+          echo "APP_HOST=$(terraform -chdir=infra/envs/standby output -raw app_public_ip)" >> "$GITHUB_ENV"
+          echo "APP_SECURITY_GROUP_ID=$(terraform -chdir=infra/envs/standby output -raw app_security_group_id)" >> "$GITHUB_ENV"
+          echo "DATABASE_ENDPOINT=$(terraform -chdir=infra/envs/standby output -raw database_endpoint)" >> "$GITHUB_ENV"
+          echo "DATABASE_NAME=$(terraform -chdir=infra/envs/standby output -raw database_name)" >> "$GITHUB_ENV"
+          echo "DATABASE_PASSWORD_PARAMETER_NAME=$(terraform -chdir=infra/envs/standby output -raw database_password_parameter_name)" >> "$GITHUB_ENV"
+          echo "ORDER_EVENTS_QUEUE_URL=$(terraform -chdir=infra/envs/standby output -raw order_events_queue_url)" >> "$GITHUB_ENV"
 
       - name: Install Ansible
         run: |
@@ -108,6 +66,7 @@ jobs:
           echo "RUNNER_IP=${RUNNER_IP}" >> "$GITHUB_ENV"
 
           aws ec2 authorize-security-group-ingress \
+            --region "$STANDBY_AWS_REGION" \
             --group-id "$APP_SECURITY_GROUP_ID" \
             --protocol tcp \
             --port 22 \
@@ -148,13 +107,13 @@ jobs:
             -e "database_username=${DB_USERNAME}" \
             -e "database_password_parameter_name=${DATABASE_PASSWORD_PARAMETER_NAME}" \
             -e "order_events_queue_url=${ORDER_EVENTS_QUEUE_URL}" \
-            -e "aws_region=${AWS_REGION}" \
-            -e "ecr_region=${AWS_REGION}"
+            -e "aws_region=${STANDBY_AWS_REGION}" \
+            -e "ecr_region=${PRIMARY_AWS_REGION}"
 
-      - name: Validate deployed health checks
+      - name: Validate standby health checks
         run: |
           for port in 8081 8082 8083; do
-            echo "Waiting for service on port ${port}..."
+            echo "Waiting for standby service on port ${port}..."
             curl \
               --fail \
               --silent \
@@ -171,6 +130,7 @@ jobs:
         run: |
           if [ -n "${RUNNER_IP:-}" ]; then
             aws ec2 revoke-security-group-ingress \
+              --region "$STANDBY_AWS_REGION" \
               --group-id "$APP_SECURITY_GROUP_ID" \
               --protocol tcp \
               --port 22 \

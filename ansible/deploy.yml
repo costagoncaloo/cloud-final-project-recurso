@@ -5,7 +5,10 @@
   vars:
     app_dir: /opt/cloud-recurso
     aws_region: eu-west-1
+    ecr_region: "{{ aws_region }}"
     ecr_registry: 806758135628.dkr.ecr.eu-west-1.amazonaws.com
+    database_password: ""
+    database_password_parameter_name: ""
 
   tasks:
     - name: Install Docker
@@ -47,8 +50,34 @@
 
     - name: Login to ECR
       ansible.builtin.shell: |
-        aws ecr get-login-password --region {{ aws_region }} | docker login --username AWS --password-stdin {{ ecr_registry }}
+        aws ecr get-login-password --region {{ ecr_region }} | docker login --username AWS --password-stdin {{ ecr_registry }}
       changed_when: false
+
+    - name: Read database password from SSM Parameter Store
+      ansible.builtin.command:
+        cmd: >
+          aws ssm get-parameter
+          --name {{ database_password_parameter_name }}
+          --with-decryption
+          --region {{ aws_region }}
+          --query Parameter.Value
+          --output text
+      register: ssm_database_password
+      changed_when: false
+      no_log: true
+      when: database_password_parameter_name | length > 0
+
+    - name: Set effective database password from SSM
+      ansible.builtin.set_fact:
+        effective_database_password: "{{ ssm_database_password.stdout }}"
+      no_log: true
+      when: database_password_parameter_name | length > 0
+
+    - name: Set effective database password from variable
+      ansible.builtin.set_fact:
+        effective_database_password: "{{ database_password }}"
+      no_log: true
+      when: database_password_parameter_name | length == 0
 
     - name: Render production compose file
       ansible.builtin.template:

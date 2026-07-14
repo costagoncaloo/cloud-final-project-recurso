@@ -28,3 +28,22 @@ variable "database_password" {
   sensitive = true
 }
 
+variable "multi_az" {
+  type    = bool
+  default = false
+}
+
+variable "storage_encrypted" {
+  type    = bool
+  default = false
+}
+
+variable "backup_retention_period" {
+  type    = number
+  default = 7
+}
+
+variable "deletion_protection" {
+  type    = bool
+  default = false
+}

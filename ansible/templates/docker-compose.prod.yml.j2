@@ -6,7 +6,7 @@ services:
       SERVER_PORT: "8081"
       DATABASE_URL: "jdbc:postgresql://{{ database_endpoint }}:5432/{{ database_name }}"
       DATABASE_USERNAME: "{{ database_username }}"
-      DATABASE_PASSWORD: "{{ database_password }}"
+      DATABASE_PASSWORD: "{{ effective_database_password }}"
     ports:
       - "8081:8081"
 
@@ -17,7 +17,7 @@ services:
       SERVER_PORT: "8082"
       DATABASE_URL: "jdbc:postgresql://{{ database_endpoint }}:5432/{{ database_name }}"
       DATABASE_USERNAME: "{{ database_username }}"
-      DATABASE_PASSWORD: "{{ database_password }}"
+      DATABASE_PASSWORD: "{{ effective_database_password }}"
       AWS_REGION: "{{ aws_region }}"
       ORDER_EVENTS_QUEUE_URL: "{{ order_events_queue_url }}"
     ports:

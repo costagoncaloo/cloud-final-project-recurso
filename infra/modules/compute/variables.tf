@@ -22,3 +22,8 @@ variable "instance_type" {
 variable "sqs_queue_arn" {
   type = string
 }
+
+variable "ssm_parameter_arns" {
+  type    = list(string)
+  default = []
+}

@@ -84,20 +84,21 @@ data "aws_iam_policy_document" "github_actions" {
       test     = "StringLike"
       variable = "s3:prefix"
       values = [
-        var.terraform_state_key,
-        "envs/dev/",
-        "envs/dev/*"
+        "envs/*",
+        "envs/*/terraform.tfstate"
       ]
     }
   }
 
   statement {
-    sid = "ReadTerraformStateObject"
+    sid = "ManageTerraformStateObject"
     actions = [
-      "s3:GetObject"
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject"
     ]
     resources = [
-      "arn:aws:s3:::${var.terraform_state_bucket}/${var.terraform_state_key}"
+      "arn:aws:s3:::${var.terraform_state_bucket}/envs/*/terraform.tfstate"
     ]
   }
 
@@ -132,6 +133,20 @@ data "aws_iam_policy_document" "github_actions" {
     resources = [
       "arn:aws:ec2:${var.aws_region}:${var.aws_account_id}:security-group/${var.app_security_group_id}"
     ]
+  }
+
+  statement {
+    sid = "ProvisionProjectInfrastructure"
+    actions = [
+      "ec2:*",
+      "rds:*",
+      "sqs:*",
+      "ssm:*",
+      "iam:*",
+      "ecr:*",
+      "cloudwatch:*"
+    ]
+    resources = ["*"]
   }
 }
 

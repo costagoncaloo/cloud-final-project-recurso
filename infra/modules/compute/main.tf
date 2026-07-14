@@ -94,5 +94,29 @@ resource "aws_iam_role_policy_attachment" "sqs_access" {
   policy_arn = aws_iam_policy.sqs_access.arn
 }
 
+data "aws_iam_policy_document" "ssm_parameter_access" {
+  count = length(var.ssm_parameter_arns) > 0 ? 1 : 0
 
+  statement {
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters"
+    ]
 
+    resources = var.ssm_parameter_arns
+  }
+}
+
+resource "aws_iam_policy" "ssm_parameter_access" {
+  count = length(var.ssm_parameter_arns) > 0 ? 1 : 0
+
+  name   = "${var.name_prefix}-ssm-parameter-access"
+  policy = data.aws_iam_policy_document.ssm_parameter_access[0].json
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_parameter_access" {
+  count = length(var.ssm_parameter_arns) > 0 ? 1 : 0
+
+  role       = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.ssm_parameter_access[0].arn
+}
